@@ -34,7 +34,7 @@ const Upload = ({ url }) => {
     try {
       const response = await axios.post(`${url}/api/admin/upload-csv`, formData, {
         headers: {
-          adToken,
+           Authorization: `Bearer ${adToken}`,
           'Content-Type': 'multipart/form-data',
         },
       });
