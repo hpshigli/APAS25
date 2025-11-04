@@ -1,70 +1,75 @@
-/* Table/Grid (Student List) Styles */
+/* -----------------------------
+   Table/Grid (Student List) Styles
+------------------------------ */
 .list-table-format{
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1fr .5fr;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 15px;
-    border: 1px solid #cacaca;
-    font-size: 13px;
-    justify-content: center;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr .5fr;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 15px;
+  border: 1px solid #cacaca;
+  font-size: 13px;
+  justify-content: center;
+  background: #ffffff;
+  border-radius: 8px;
 }
 
 .list-table-format.title{
-    background-color:aliceblue;
+  background-color: aliceblue;
+  font-weight: 600;
 }
 
 .list-table-format img{
-    width: 50px;
+  width: 50px;
 }
 
 .list-table-format .cursor{
-    width: 40px;
+  width: 40px;
 }
 
 .list-name{
-    color: black;
+  color: #111;
 }
 
 .list-price{
-    color: tomato;
-    font-weight: 600;
+  color: tomato;
+  font-weight: 600;
 }
 
 /* Responsive table adjustments */
 @media (max-width:600px){
-    .list-table-format{
-        grid-template-columns: 1.5fr 1fr 1fr 1fr ;
-        gap: 15px;
-    }
-    .list-table-format .cursor{
-        width: 25px;
-    }
-    .list-table-format img{
-        width: 50px;
-    }
-    .list-img{
-        display: none;
-    }
-    .list-title-img{
-        display: none;
-    }
+  .list-table-format{
+    grid-template-columns: 1.5fr 1fr 1fr 1fr;
+    gap: 15px;
+  }
+  .list-table-format .cursor{
+    width: 25px;
+  }
+  .list-table-format img{
+    width: 50px;
+  }
+  .list-img,
+  .list-title-img{
+    display: none;
+  }
 }
 
 @media (max-width:400px){
-    .list-table-format{
-        grid-template-columns: 2fr 1fr 1fr 1fr ;
-    }
+  .list-table-format{
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+  }
 }
 
-/* Report Page, Charts, and Summary Styles */
+/* -----------------------------
+   Report Page, Charts, and Summary Styles
+------------------------------ */
 .report-container {
-  max-width: 850px;
+  max-width: 1100px;              /* more room for per-student bars */
   margin: 32px auto 0 auto;
   background: #f9fafc;
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(60,72,88,0.09);
-  padding: 38px 34px;
+  padding: 32px 28px;
   font-size: 16px;
   color: #444;
   font-family: Arial, sans-serif;
@@ -74,80 +79,162 @@
   color: #e94b3c;
   font-size: 32px;
   font-weight: 700;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+}
+
+/* Controls (section select + toggle) */
+.controls-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 .section-label {
   font-weight: 600;
-  margin-right: 8px;
+  margin-right: 6px;
   color: #555;
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .section-select {
   padding: 8px 12px;
   border-radius: 7px;
   border: 1px solid #cacaca;
-  font-size: 17px;
+  font-size: 15px;
   background: #fbfbfb;
   margin-top: 2px;
-  margin-bottom: 18px;
+  outline: none;
 }
 
+.section-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.toggle-btn {
+  padding: 9px 14px;
+  background: #2d91c2;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.toggle-btn:hover { opacity: 0.92; }
+.toggle-btn:active { transform: translateY(1px); }
+
+/* Error / Loading states */
+.error {
+  color: #c62828;
+  background: #fdecec;
+  border: 1px solid #f7b2b2;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin: 8px 0 4px;
+  font-size: 14px;
+}
+
+.loading {
+  color: #555;
+  font-style: italic;
+  margin: 8px 0 4px;
+  font-size: 14px;
+}
+
+/* Summary box */
 .summary-box {
-  margin-top: 30px;
+  margin-top: 16px;
   background: #fff;
-  border-radius: 9px;
+  border-radius: 10px;
   box-shadow: 0 2px 8px rgba(253,130,29,0.09);
-  padding: 20px;
+  padding: 18px;
 }
 
 .summary-box h3 {
   color: #fd821d;
-  margin-bottom: 12px;
-  font-weight: 600;
+  margin-bottom: 10px;
+  font-weight: 700;
+  font-size: 18px;
 }
 
 .summary-box ul {
   padding-left: 16px;
-  font-size: 16px;
+  font-size: 15px;
   margin-bottom: 10px;
+  line-height: 1.6;
 }
 
 .summary-box li {
-  margin-bottom: 7px;
+  margin-bottom: 6px;
 }
 
+/* Charts layout */
 .charts-row {
-  display: flex;
-  gap: 26px;
-  margin-top: 18px;
-  align-items: center;
+  display: grid;
+  grid-template-columns: 2fr 1fr;   /* wide per-student + compact averages */
+  gap: 18px;
+  margin-top: 16px;
+  align-items: stretch;
 }
 
 .chart-box {
-  flex: 1 1 0;
-  min-width: 290px;
-  min-height: 220px;
   background: #f8fafd;
   border-radius: 10px;
-  padding: 16px 12px;
+  padding: 14px 12px;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: center;
+  min-height: 260px;
 }
 
-/* Responsive for Report Page */
-@media (max-width: 750px) {
-  .charts-row {
-    flex-direction: column;
-    gap: 22px;
+.chart-box h4 {
+  margin: 0 0 8px 4px;
+  color: #334155;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.chart-box.wide {
+  grid-column: span 1; /* reserved in case you later want it to span 2 */
+}
+
+/* Chart canvas sizing helpers (Chart.js respects container) */
+.chart-box canvas {
+  width: 100% !important;
+  height: auto !important;
+}
+
+/* -----------------------------
+   Responsive for Report Page
+------------------------------ */
+@media (max-width: 900px) {
+  .report-container {
+    padding: 22px 18px;
   }
+  .charts-row {
+    grid-template-columns: 1fr; /* stack charts on smaller screens */
+  }
+  .chart-box {
+    min-height: 240px;
+  }
+}
+
+@media (max-width: 750px) {
   .summary-box {
     padding: 14px;
   }
   .report-container {
-    padding: 14px 6vw;
+    padding: 16px 6vw;
     font-size: 15px;
   }
+}
+
+@media (max-width: 520px) {
+  .section-label { font-size: 14px; }
+  .section-select { font-size: 14px; }
+  .toggle-btn { padding: 8px 12px; font-size: 14px; }
+  .report-container h2 { font-size: 26px; }
 }

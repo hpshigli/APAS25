@@ -1,138 +1,219 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import './Report.css';
-import { Bar, Pie } from 'react-chartjs-2';
-import Papa from 'papaparse';
+import { Bar } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Legend,
+  Tooltip,
+} from 'chart.js';
+import axios from 'axios';
+import { StoreData } from '../../context/StoreData';
 
-// Dummy: you may replace with real API call
-const csvPath = 'http://localhost:4000/assets/dummy_students.csv';
+ChartJS.register(CategoryScale, LinearScale, BarElement, Legend, Tooltip);
 
 const subjects = ['Physics', 'Chemistry', 'Maths'];
 
 const Report = () => {
-  const [students, setStudents] = useState([]);
+  const { adToken } = useContext(StoreData);
+
   const [sections, setSections] = useState([]);
   const [selectedSection, setSelectedSection] = useState('');
+  const [students, setStudents] = useState([]);
   const [summary, setSummary] = useState(null);
+  const [showAll, setShowAll] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
 
-  // Load CSV on mount
+  // Fetch sections on mount
   useEffect(() => {
-    fetch(csvPath)
-      .then((res) => res.text())
-      .then((csv) => {
-        Papa.parse(csv, {
-          header: true,
-          dynamicTyping: true,
-          complete: (result) => {
-            setStudents(result.data);
-            // Get unique section list
-            const sectionList = [
-              ...new Set(result.data.map((row) => row.Section).filter(Boolean)),
-            ];
-            setSections(sectionList);
-            setSelectedSection(sectionList[0]);
-          },
+    const loadSections = async () => {
+      try {
+        setErr('');
+        const res = await axios.get('/api/students/sections', {
+          headers: { Authorization: `Bearer ${adToken}` },
         });
-      });
-  }, []);
+        if (res.data.success) {
+          setSections(res.data.sections || []);
+          setSelectedSection((res.data.sections || [])[0] || '');
+        } else {
+          setErr(res.data.message || 'Failed to load sections');
+        }
+      } catch (e) {
+        setErr(e?.response?.data?.message || e.message || 'Failed to load sections');
+      }
+    };
+    if (adToken) loadSections();
+  }, [adToken]);
 
-  // Calculate summary on section change
+  // Fetch data when selected section or showAll changes
   useEffect(() => {
-    if (!selectedSection) return;
-    const filtered = students.filter((stu) => stu.Section === selectedSection);
+    const loadData = async () => {
+      if (!adToken) return;
+      if (!showAll && !selectedSection) return;
 
-    if (!filtered.length) {
-      setSummary(null);
-      return;
-    }
+      setLoading(true);
+      setErr('');
+      try {
+        const endpoint = showAll
+          ? '/api/students/all'
+          : `/api/students/section/${encodeURIComponent(selectedSection)}`;
 
-    // Gather stats:
-    const avgAttendance =
-      filtered.reduce((sum, stu) => sum + stu.Attendance, 0) / filtered.length;
-    const avgMarks = {};
-    subjects.forEach((subj) => {
-      avgMarks[subj] =
-        filtered.reduce((sum, stu) => sum + stu[subj], 0) / filtered.length;
-    });
+        const res = await axios.get(endpoint, {
+          headers: { Authorization: `Bearer ${adToken}` },
+        });
+        if (res.data.success) {
+          setStudents(res.data.students || []);
+          setSummary(res.data.summary || null);
+        } else {
+          setErr(res.data.message || 'Failed to load data');
+          setStudents([]);
+          setSummary(null);
+        }
+      } catch (e) {
+        setErr(e?.response?.data?.message || e.message || 'Failed to load data');
+        setStudents([]);
+        setSummary(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, [adToken, selectedSection, showAll]);
 
-    setSummary({
-      numStudents: filtered.length,
-      avgAttendance: avgAttendance.toFixed(2),
-      avgPhysics: avgMarks.Physics.toFixed(2),
-      avgChemistry: avgMarks.Chemistry.toFixed(2),
-      avgMaths: avgMarks.Maths.toFixed(2),
-      avgMarks, // For chart
-    });
-  }, [selectedSection, students]);
+  // Build per-student grouped bar data
+  const perStudentChartData = React.useMemo(() => {
+    if (!students?.length) return null;
+
+    const labels = students.map((s) => `${s.name} (${s.srn})`);
+
+    // Each subject is a dataset
+    const physics = students.map((s) => Number(s.physics) || 0);
+    const chemistry = students.map((s) => Number(s.chemistry) || 0);
+    const maths = students.map((s) => Number(s.maths) || 0);
+    const attendance = students.map((s) => Number(s.attendance) || 0);
+
+    return {
+      labels,
+      datasets: [
+        { label: 'Physics', data: physics, backgroundColor: '#2d91c2' },
+        { label: 'Chemistry', data: chemistry, backgroundColor: '#fd821d' },
+        { label: 'Maths', data: maths, backgroundColor: '#7cb342' },
+        { label: 'Attendance %', data: attendance, backgroundColor: '#e94b3c' },
+      ],
+    };
+  }, [students]);
+
+  // Build averages bar
+  const averagesChartData = React.useMemo(() => {
+    if (!summary) return null;
+    return {
+      labels: ['Attendance', ...subjects],
+      datasets: [
+        {
+          label: 'Average (%)',
+          data: [
+            Number(summary.avgAttendance) || 0,
+            Number(summary.avgPhysics) || 0,
+            Number(summary.avgChemistry) || 0,
+            Number(summary.avgMaths) || 0,
+          ],
+          backgroundColor: ['#e94b3c', '#2d91c2', '#fd821d', '#7cb342'],
+        },
+      ],
+    };
+  }, [summary]);
 
   return (
     <div className="report-container">
       <h2>Class Summary Report</h2>
-      <label htmlFor="section-select" className="section-label">
-        Select Class Section:
-      </label>
-      <select
-        id="section-select"
-        value={selectedSection}
-        onChange={(e) => setSelectedSection(e.target.value)}
-        className="section-select"
-      >
-        {sections.map((sec) => (
-          <option key={sec} value={sec}>
-            {sec}
-          </option>
-        ))}
-      </select>
-      {summary && (
-        <div className="summary-box">
-          <h3>Summary for Section {selectedSection}</h3>
-          <ul>
-            <li>Total Students: {summary.numStudents}</li>
-            <li>Average Attendance: {summary.avgAttendance}%</li>
-            <li>Average Physics Marks: {summary.avgPhysics}</li>
-            <li>Average Chemistry Marks: {summary.avgChemistry}</li>
-            <li>Average Maths Marks: {summary.avgMaths}</li>
-          </ul>
+
+      <div className="controls-row">
+        <label htmlFor="section-select" className="section-label">
+          Select Class Section:
+        </label>
+        <select
+          id="section-select"
+          value={selectedSection}
+          onChange={(e) => setSelectedSection(e.target.value)}
+          className="section-select"
+          disabled={showAll}
+        >
+          {sections.map((sec) => (
+            <option key={sec} value={sec}>
+              {sec}
+            </option>
+          ))}
+        </select>
+
+        <button
+          className="toggle-btn"
+          onClick={() => setShowAll((v) => !v)}
+        >
+          {showAll ? 'Show Selected Section' : 'Show All Sections'}
+        </button>
+      </div>
+
+      {err && <p className="error">{err}</p>}
+      {loading && <p className="loading">Loading…</p>}
+
+      {!loading && summary && (
+        <>
+          <div className="summary-box">
+            <h3>
+              {showAll ? 'Summary for All Sections' : `Summary for Section ${selectedSection}`}
+            </h3>
+            <ul>
+              <li>Total Students: {summary.numStudents}</li>
+              <li>Average Attendance: {summary.avgAttendance}%</li>
+              <li>Average Physics Marks: {summary.avgPhysics}</li>
+              <li>Average Chemistry Marks: {summary.avgChemistry}</li>
+              <li>Average Maths Marks: {summary.avgMaths}</li>
+            </ul>
+          </div>
+
           <div className="charts-row">
-            <div className="chart-box">
-              <Bar
-                data={{
-                  labels: subjects,
-                  datasets: [
-                    {
-                      label: 'Average Marks',
-                      data: subjects.map((subj) => summary.avgMarks[subj]),
-                      backgroundColor: ['#e94b3c', '#fd821d', '#2d91c2'],
+            <div className="chart-box wide">
+              <h4>Per-Student Scores</h4>
+              {perStudentChartData ? (
+                <Bar
+                  data={perStudentChartData}
+                  options={{
+                    responsive: true,
+                    plugins: { legend: { position: 'top' } },
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                      y: { beginAtZero: true, max: 100, title: { display: true, text: 'Score / %' } },
+                      x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 } },
                     },
-                  ],
-                }}
-                options={{
-                  responsive: true,
-                  plugins: { legend: { display: false } },
-                }}
-              />
+                  }}
+                />
+              ) : (
+                <p>No student data</p>
+              )}
             </div>
+
             <div className="chart-box">
-              <Pie
-                data={{
-                  labels: ['Attendance', 'Absence'],
-                  datasets: [
-                    {
-                      data: [
-                        summary.avgAttendance,
-                        (100 - summary.avgAttendance).toFixed(2),
-                      ],
-                      backgroundColor: ['#e94b3c', '#cfd8dc'],
+              <h4>Averages</h4>
+              {averagesChartData ? (
+                <Bar
+                  data={averagesChartData}
+                  options={{
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                      y: { beginAtZero: true, max: 100, title: { display: true, text: 'Average %' } },
                     },
-                  ],
-                }}
-                options={{
-                  responsive: true,
-                  plugins: { legend: { position: 'bottom' } },
-                }}
-              />
+                  }}
+                />
+              ) : (
+                <p>No averages</p>
+              )}
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

@@ -8,6 +8,7 @@ import "dotenv/config";
 import { connectDB, sequelize } from "./config/db.js";
 import adminRouter from "./routes/adminRoute.js";
 import uploadRouter from "./routes/uploadRoute.js";
+import studentRouter from "./routes/studentRoute.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -33,6 +34,7 @@ app.get("/", (_req, res) => res.send("API Working"));
 // API routes
 app.use("/api/admin", adminRouter);   // <-- login/register live here
 app.use("/api", uploadRouter);        // /api/admin/upload-csv etc.
+app.use("/api/students", studentRouter);
 
 // 404 fallback
 app.use((req, res) => res.status(404).json({ error: "Not found" }));
