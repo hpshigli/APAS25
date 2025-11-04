@@ -1,111 +1,104 @@
-import React,{useContext, useState} from 'react'
-import './Insights.css'
-import axios from 'axios'
-import { assets } from '../../assets/assets'
-import { toast } from 'react-toastify'
-import { StoreData } from '../../context/StoreData'
-const Insights = ({url}) => {
+import React, { useState, useContext } from 'react';
+import axios from 'axios';
+import { StoreData } from '../../context/StoreData';
+import { toast } from 'react-toastify';
 
-    
-  const {adToken}= useContext(StoreData);
-    const [image,setImage] = useState(false);
-    const [data,setData] = useState({
-        name:"",
-        // description:"",
-        price:"",
-        category:"Salad",
-        canteen: "Canteen A"
-    })
 
-    const onChangeHandler = (event) => {
-        const name = event.target.name;
-        const value = event.target.value;
-        setData(data=>({...data,[name]:value}))
-    
+const CsvUpload = ({ url }) => {
+  const { adToken } = useContext(StoreData);
+  const [fileType, setFileType] = useState('students'); // "students" or "attendance"
+  const [file, setFile] = useState(null);
+  const [errors, setErrors] = useState([]);
+
+  const onFileChange = (e) => {
+    if (e.target.files.length > 0) {
+      setFile(e.target.files[0]);
+      setErrors([]);
+    }
+  };
+
+  const onTypeChange = (e) => {
+    setFileType(e.target.value);
+    setFile(null);
+    setErrors([]);
+  };
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!file) {
+      toast.error('Please select a CSV file to upload.');
+      return;
+    }
+    if (!adToken) {
+      toast.error('Please login as admin to upload.');
+      return;
     }
 
-const onSubmitHandler = async(event) => {
-    event.preventDefault();
-    const formData = new FormData(); 
-    formData.append("name",data.name)
-    // formData.append("description",data.description)
-    formData.append("price",Number(data.price))
-    formData.append("category",data.category)
-    formData.append("canteen",data.canteen)
-    formData.append("image",image)
-    if (adToken) {
-        
-        const response = await axios.post(`${url}/api/food/add`,formData,{headers:{adToken}}); 
-        if (response.data.success){
-            setData({
-                name:"",
-                // description:"",
-                price:"",
-                category:"Salad"
-            })
-            setImage(false)
-            toast.success(response.data.message);
-            setTimeout(() => {
-                window.location.reload();
-            }, 1500);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', fileType);
+
+    try {
+      const response = await axios.post(`${url}/api/admin/upload-csv`, formData, {
+        headers: {
+          adToken,
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (response.data.success) {
+        toast.success(response.data.message || 'File uploaded successfully!');
+        setFile(null);
+        setErrors([]);
+      } else {
+        if (response.data.errors && Array.isArray(response.data.errors)) {
+          setErrors(response.data.errors);
+          toast.error('File uploaded with some errors. Check error log below.');
+        } else {
+          toast.error(response.data.message || 'Upload failed.');
         }
-        else{
-            toast.error(response.data.message);
-        }
+      }
+    } catch (err) {
+      toast.error('Upload failed: ' + (err.response?.data?.message || err.message));
     }
-    else{
-        toast.error("Please login!!")
-    }
-}
-
+  };
 
   return (
+    <div className='csv-upload-container'>
+      <form onSubmit={onSubmit} className='csv-upload-form'>
+        <h2>Upload CSV File</h2>
 
-    
-    <div className='add'>
-      <form className='flex-col' onSubmit={onSubmitHandler}>
-        <div className="add-canteen-name flex-col">
-            <p onChange={onChangeHandler} value={data.canteen}>Canteen A</p>
-        </div>
-        <div className="add-img-upload flex-col">
-            <p>Upload image</p>
-            <label htmlFor="image">
-                <img src={image?URL.createObjectURL(image):assets.upload_area} alt="" />
-            </label>
-            <input onChange={(e)=>setImage(e.target.files[0])} type="file" id='image' hidden required />
-        </div>
-        <div className="add-product-name flex-col">
-            <p>Product name</p>
-            <input onChange={onChangeHandler} value={data.name} type="text" name='name' placeholder='Type here' required />
-        </div>
-        {/* <div className="add-product-description flex-col">
-            <p>Product description</p>
-            <textarea onChange={onChangeHandler} value={data.description} name="description" rows="6" placeholder='Write content here' id="" required></textarea>
-        </div> */}
-        <div className="add-category-price">
-            <div className="add-category flex-col">
-                <p>Product category</p>
-                <select onChange={onChangeHandler}  name="category" id="">
-                    
-                    <option value="Salad">Salad</option>
-                    <option value="Rolls">Rolls</option>
-                    <option value="Desserts">Desserts</option>
-                    <option value="Sandwich">Sandwich</option>
-                    <option value="Cake">Cake</option>
-                    <option value="Pure Veg">Pure Veg</option>
-                    <option value="Pasta">Pasta</option>
-                    <option value="Noodles">Noodles</option> 
-                </select>
-            </div>
-            <div className="add-price flex-col">
-                <p>Product price</p>
-                <input onChange={onChangeHandler} value={data.price} type="Number" name='price' placeholder='₹20' required />
-            </div>
-        </div>
-        <button type='submit' className='add-btn'>ADD</button>
+        <label htmlFor='fileType'>Select CSV Type:</label>
+        <select id='fileType' value={fileType} onChange={onTypeChange}>
+          <option value='students'>Students</option>
+          <option value='attendance'>Attendance</option>
+        </select>
+
+        <label htmlFor='csvFile'>Select CSV File:</label>
+        <input
+          type='file'
+          id='csvFile'
+          accept='.csv,text/csv'
+          onChange={onFileChange}
+          required
+        />
+
+        <button type='submit' className='upload-btn'>Upload</button>
+
+        {errors.length > 0 && (
+          <div className='error-log'>
+            <h3>Errors in uploaded file:</h3>
+            <ul>
+              {errors.map((err, idx) => (
+                <li key={idx}>{err}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </form>
     </div>
-  )
-}
+  );
+};
 
-export default Insights
+export default CsvUpload;

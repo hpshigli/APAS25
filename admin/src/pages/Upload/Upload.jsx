@@ -1,178 +1,104 @@
-import React, { useState, useEffect, useContext } from "react";
-import "./Upload.css";
-import axios from "axios";
-import { toast } from "react-toastify";
-import { assets } from "../../assets/assets";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-import { StoreData } from "../../context/StoreData";
+import React, { useState, useContext } from 'react';
+import axios from 'axios';
+import { StoreData } from '../../context/StoreData';
+import { toast } from 'react-toastify';
+import './Upload.css';   
 
-const Upload = ({ url }) => {
-  const [orders, setOrders] = useState([]);
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [filteredOrders, setFilteredOrders] = useState([]);
-  const [viewOngoing, setViewOngoing] = useState(true); // State to toggle between Ongoing and Completed
+const CsvUpload = ({ url }) => {
   const { adToken } = useContext(StoreData);
+  const [fileType, setFileType] = useState('students'); // "students" or "attendance"
+  const [file, setFile] = useState(null);
+  const [errors, setErrors] = useState([]);
 
-  // Fetch all orders from the server
-  const fetchAllOrders = async () => {
-    if (adToken) {
-      const canteen_name = "Canteen A"; // Replace with actual canteen name
-      try {
-        const response = await axios.get(url + "/api/order/list", {
-          params: { canteenName: canteen_name },
-          headers: { adToken }, // Headers should be in the third argument
-        });
-
-        if (response.data.success) {
-          // Sort orders by date in descending order
-          const sortedOrders = response.data.data.sort(
-            (a, b) => new Date(a.date) - new Date(b.date)
-          );
-          setOrders(sortedOrders);
-        } else {
-          toast.error("Error fetching orders");
-        }
-      } catch (error) {
-        toast.error("Error fetching orders");
-      }
-    } else {
-      toast.error("Please login!");
+  const onFileChange = (e) => {
+    if (e.target.files.length > 0) {
+      setFile(e.target.files[0]);
+      setErrors([]);
     }
   };
 
-  // Handle status change of the order
-  const statusHandler = async (event, orderId) => {
-    const updatedStatus = event.target.value;
+  const onTypeChange = (e) => {
+    setFileType(e.target.value);
+    setFile(null);
+    setErrors([]);
+  };
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!file) {
+      toast.error('Please select a CSV file to upload.');
+      return;
+    }
+    if (!adToken) {
+      toast.error('Please login as admin to upload.');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', fileType);
+
     try {
-      const response = await axios.post(
-        url + "/api/order/status",
-        {
-          orderId,
-          status: updatedStatus,
+      const response = await axios.post(`${url}/api/admin/upload-csv`, formData, {
+        headers: {
+          adToken,
+          'Content-Type': 'multipart/form-data',
         },
-        {
-          headers: { adToken },
-        }
-      );
+      });
+
       if (response.data.success) {
-        // Refetch all orders after status update
-        await fetchAllOrders();
-        toast.success("Order status updated");
-        // setTimeout(() => {
-        //   window.location.reload()
-        // }, 2000);
-        // fetchAllOrders()
+        toast.success(response.data.message || 'File uploaded successfully!');
+        setFile(null);
+        setErrors([]);
+      } else {
+        if (response.data.errors && Array.isArray(response.data.errors)) {
+          setErrors(response.data.errors);
+          toast.error('File uploaded with some errors. Check error log below.');
+        } else {
+          toast.error(response.data.message || 'Upload failed.');
+        }
       }
-    } catch (error) {
-      toast.error("Error updating order status");
+    } catch (err) {
+      toast.error('Upload failed: ' + (err.response?.data?.message || err.message));
     }
   };
-
-  // Fetch orders when the component mounts
-  useEffect(() => {
-    if (adToken) {
-      fetchAllOrders();
-    }
-  }, [adToken]);
-
-  // Filter orders based on the selected date and the selected view (Ongoing or Completed)
-  useEffect(() => {
-    let filtered = orders;
-
-    // Filter by date if a date is selected
-    if (selectedDate) {
-      filtered = filtered.filter(
-        (order) =>
-          new Date(order.date).toDateString() === selectedDate.toDateString()
-      );
-    }
-
-    // Filter based on Ongoing or Completed orders
-    if (viewOngoing) {
-      filtered = filtered.filter(
-        (order) => order.status !== "Food Ready!!"
-      );
-    } else {
-      filtered = filtered.filter(
-        (order) => order.status === "Food Ready!!"
-      );
-    }
-
-    setFilteredOrders(filtered);
-  }, [selectedDate, orders, viewOngoing]);
 
   return (
-    <div className="order add">
-      <h1>Orders</h1>
-      <br /><br />
+    <div className='csv-upload-container'>
+      <form onSubmit={onSubmit} className='csv-upload-form'>
+        <h2>Upload CSV File</h2>
 
-      {/* Toggle Buttons for Ongoing and Completed Orders */}
-      <div className="order-view-toggle">
-        <button onClick={() => setViewOngoing(true)} className={viewOngoing ? "active" : ""}>
-          Ongoing Orders
-        </button>
-        <button onClick={() => setViewOngoing(false)} className={!viewOngoing ? "active" : ""}>
-          Completed Orders
-        </button>
-      </div>
+        <label htmlFor='fileType'>Select CSV Type:</label>
+        <select id='fileType' value={fileType} onChange={onTypeChange}>
+          <option value='students'>Students</option>
+          <option value='attendance'>Attendance</option>
+        </select>
 
-      {/* Date Picker Popup */}
-      <div className="date-picker-container">
-        <DatePicker
-          selected={selectedDate}
-          onChange={(date) => setSelectedDate(date)}
-          dateFormat="dd-MM-yyyy"
-          placeholderText="Select a date"
-          className="date-picker"
+        <label htmlFor='csvFile'>Select CSV File:</label>
+        <input
+          type='file'
+          id='csvFile'
+          accept='.csv,text/csv'
+          onChange={onFileChange}
+          required
         />
-      </div>
-      <br />
 
-      <div className="order-list">
-        {filteredOrders.map((order, index) => (
-          <div key={index}>
-            <h4>Date: {order.date}</h4>
-            <div className="order-item">
-              <img src={assets.parcel_icon} alt="" />
-              <p className="order-item-food">
-                {order.items.map((item, index) => (
-                  <span key={index}>
-                    {item.name} x {item.quantity}
-                    {index !== order.items.length - 1 && <br />}
-                  </span>
-                ))}
-              </p>
-              <p className="order-item-name">{order.userName}</p>
-              <p className="order-item-studentId">PES{order.studentId}</p>
-              <p className="order-item-items">
-                <b>Items:</b> {order.items.length}
-              </p>
-              <p className="order-item-amount">
-                <b>₹{order.amount}</b>
-              </p>
-              <div className="order-update">
-                <select
-                  onChange={(event) => statusHandler(event, order._id)}
-                  value={order.status}
-                >
-                  <option value="Order placed">Order placed</option>
-                  <option value="Food Processing">Food Processing</option>
-                  <option value="Food Ready!!">Food Ready!!</option>
-                </select>
+        <button type='submit' className='upload-btn'>Upload</button>
 
-                {/* <button onClick={() => fetchAllOrders()}>Update</button> */}
-              </div>
-              <p></p>
-              <p>
-                <b>Time Slot: </b><br /> {order.deliveryTime}
-              </p>
-            </div>
+        {errors.length > 0 && (
+          <div className='error-log'>
+            <h3>Errors in uploaded file:</h3>
+            <ul>
+              {errors.map((err, idx) => (
+                <li key={idx}>{err}</li>
+              ))}
+            </ul>
           </div>
-        ))}
-      </div>
+        )}
+      </form>
     </div>
   );
 };
 
-export default Upload;
+export default CsvUpload;
