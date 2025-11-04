@@ -2,11 +2,10 @@ import React, { useState, useContext } from 'react';
 import axios from 'axios';
 import { StoreData } from '../../context/StoreData';
 import { toast } from 'react-toastify';
-import './Upload.css';   
+import './Upload.css';
 
-const CsvUpload = ({ url }) => {
+const Upload = ({ url }) => {
   const { adToken } = useContext(StoreData);
-  const [fileType, setFileType] = useState('students'); // "students" or "attendance"
   const [file, setFile] = useState(null);
   const [errors, setErrors] = useState([]);
 
@@ -15,12 +14,6 @@ const CsvUpload = ({ url }) => {
       setFile(e.target.files[0]);
       setErrors([]);
     }
-  };
-
-  const onTypeChange = (e) => {
-    setFileType(e.target.value);
-    setFile(null);
-    setErrors([]);
   };
 
   const onSubmit = async (e) => {
@@ -37,7 +30,6 @@ const CsvUpload = ({ url }) => {
 
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('type', fileType);
 
     try {
       const response = await axios.post(`${url}/api/admin/upload-csv`, formData, {
@@ -46,7 +38,6 @@ const CsvUpload = ({ url }) => {
           'Content-Type': 'multipart/form-data',
         },
       });
-
       if (response.data.success) {
         toast.success(response.data.message || 'File uploaded successfully!');
         setFile(null);
@@ -54,7 +45,7 @@ const CsvUpload = ({ url }) => {
       } else {
         if (response.data.errors && Array.isArray(response.data.errors)) {
           setErrors(response.data.errors);
-          toast.error('File uploaded with some errors. Check error log below.');
+          toast.error('File uploaded with some errors.');
         } else {
           toast.error(response.data.message || 'Upload failed.');
         }
@@ -67,14 +58,7 @@ const CsvUpload = ({ url }) => {
   return (
     <div className='csv-upload-container'>
       <form onSubmit={onSubmit} className='csv-upload-form'>
-        <h2>Upload CSV File</h2>
-
-        <label htmlFor='fileType'>Select CSV Type:</label>
-        <select id='fileType' value={fileType} onChange={onTypeChange}>
-          <option value='students'>Students</option>
-          <option value='attendance'>Attendance</option>
-        </select>
-
+        <h2>Upload Student CSV</h2>
         <label htmlFor='csvFile'>Select CSV File:</label>
         <input
           type='file'
@@ -83,9 +67,7 @@ const CsvUpload = ({ url }) => {
           onChange={onFileChange}
           required
         />
-
         <button type='submit' className='upload-btn'>Upload</button>
-
         {errors.length > 0 && (
           <div className='error-log'>
             <h3>Errors in uploaded file:</h3>
@@ -100,5 +82,4 @@ const CsvUpload = ({ url }) => {
     </div>
   );
 };
-
-export default CsvUpload;
+export default Upload;

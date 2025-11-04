@@ -1,3 +1,4 @@
+/* Table/Grid (Student List) Styles */
 .list-table-format{
     display: grid;
     grid-template-columns: 1fr 1fr 1fr 1fr .5fr;
@@ -7,13 +8,11 @@
     border: 1px solid #cacaca;
     font-size: 13px;
     justify-content: center;
-    /* text-align: center; */
 }
 
 .list-table-format.title{
     background-color:aliceblue;
 }
-
 
 .list-table-format img{
     width: 50px;
@@ -32,40 +31,123 @@
     font-weight: 600;
 }
 
+/* Responsive table adjustments */
 @media (max-width:600px){
     .list-table-format{
         grid-template-columns: 1.5fr 1fr 1fr 1fr ;
         gap: 15px;
     }
-    
-    /* .list-table-format.title{
-        display: none;
-        } */
-        
-        .list-table-format .cursor{
-            width: 25px;
-        }
-        
-        
-        .list-table-format img{
-            width: 50px;
-            
-        }
-        
-        .list-img{
-            display: none;
+    .list-table-format .cursor{
+        width: 25px;
     }
-    
+    .list-table-format img{
+        width: 50px;
+    }
+    .list-img{
+        display: none;
+    }
     .list-title-img{
         display: none;
     }
-    
 }
 
 @media (max-width:400px){
     .list-table-format{
         grid-template-columns: 2fr 1fr 1fr 1fr ;
-
-        /* padding-right: 20px; */
     }
+}
+
+/* Report Page, Charts, and Summary Styles */
+.report-container {
+  max-width: 850px;
+  margin: 32px auto 0 auto;
+  background: #f9fafc;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(60,72,88,0.09);
+  padding: 38px 34px;
+  font-size: 16px;
+  color: #444;
+  font-family: Arial, sans-serif;
+}
+
+.report-container h2 {
+  color: #e94b3c;
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+.section-label {
+  font-weight: 600;
+  margin-right: 8px;
+  color: #555;
+  font-size: 18px;
+}
+
+.section-select {
+  padding: 8px 12px;
+  border-radius: 7px;
+  border: 1px solid #cacaca;
+  font-size: 17px;
+  background: #fbfbfb;
+  margin-top: 2px;
+  margin-bottom: 18px;
+}
+
+.summary-box {
+  margin-top: 30px;
+  background: #fff;
+  border-radius: 9px;
+  box-shadow: 0 2px 8px rgba(253,130,29,0.09);
+  padding: 20px;
+}
+
+.summary-box h3 {
+  color: #fd821d;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.summary-box ul {
+  padding-left: 16px;
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+.summary-box li {
+  margin-bottom: 7px;
+}
+
+.charts-row {
+  display: flex;
+  gap: 26px;
+  margin-top: 18px;
+  align-items: center;
+}
+
+.chart-box {
+  flex: 1 1 0;
+  min-width: 290px;
+  min-height: 220px;
+  background: #f8fafd;
+  border-radius: 10px;
+  padding: 16px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Responsive for Report Page */
+@media (max-width: 750px) {
+  .charts-row {
+    flex-direction: column;
+    gap: 22px;
+  }
+  .summary-box {
+    padding: 14px;
+  }
+  .report-container {
+    padding: 14px 6vw;
+    font-size: 15px;
+  }
 }

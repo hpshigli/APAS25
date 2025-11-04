@@ -1,84 +1,141 @@
-import React, {useState, useEffect, useContext} from 'react'
-import './Report.css'
-import axios from 'axios'
-import {toast} from 'react-toastify'
-import { assets } from '../../assets/assets'
-import { StoreData } from '../../context/StoreData'
-const Report = ({url}) => {
+import React, { useState, useEffect } from 'react';
+import './Report.css';
+import { Bar, Pie } from 'react-chartjs-2';
+import Papa from 'papaparse';
 
-  const [list,setList] = useState([]);
-  const {adToken} = useContext(StoreData)
-  
-  const fetchList = async()=>{
-    if (adToken) {
-  
-      const canteen_name = "Canteen A"
-      const response = await axios.get(`${url}/api/food/list`, {headers:{adToken}}, {
-        params: { canteen: canteen_name }
+// Dummy: you may replace with real API call
+const csvPath = 'http://localhost:4000/assets/dummy_students.csv';
+
+const subjects = ['Physics', 'Chemistry', 'Maths'];
+
+const Report = () => {
+  const [students, setStudents] = useState([]);
+  const [sections, setSections] = useState([]);
+  const [selectedSection, setSelectedSection] = useState('');
+  const [summary, setSummary] = useState(null);
+
+  // Load CSV on mount
+  useEffect(() => {
+    fetch(csvPath)
+      .then((res) => res.text())
+      .then((csv) => {
+        Papa.parse(csv, {
+          header: true,
+          dynamicTyping: true,
+          complete: (result) => {
+            setStudents(result.data);
+            // Get unique section list
+            const sectionList = [
+              ...new Set(result.data.map((row) => row.Section).filter(Boolean)),
+            ];
+            setSections(sectionList);
+            setSelectedSection(sectionList[0]);
+          },
+        });
       });
-      if (response.data.success) {
-        setList(response.data.data);
-      }
-      else{
-        toast.error("Error") 
-      }
-    }
-    else{
-      toast.error("Please login!!")
-    }
-  }
+  }, []);
 
-  const removeFood = async(foodId)=>{
-    if (adToken) {
-      
-      const response = await axios.post(`${url}/api/food/remove`,{id:foodId}, {headers:{adToken}});
-      await fetchList();
-      if (response.data.success) {
-        toast.success(response.data.message)
-        
-      }
-      else{
-        toast.error("error")
-      }
-    }
-    else{
-      toast.error("Please login!!")
-    }
-  }
+  // Calculate summary on section change
+  useEffect(() => {
+    if (!selectedSection) return;
+    const filtered = students.filter((stu) => stu.Section === selectedSection);
 
-  useEffect(()=>{
-    if (adToken) {
-      
-      fetchList();
+    if (!filtered.length) {
+      setSummary(null);
+      return;
     }
-  },[adToken])
+
+    // Gather stats:
+    const avgAttendance =
+      filtered.reduce((sum, stu) => sum + stu.Attendance, 0) / filtered.length;
+    const avgMarks = {};
+    subjects.forEach((subj) => {
+      avgMarks[subj] =
+        filtered.reduce((sum, stu) => sum + stu[subj], 0) / filtered.length;
+    });
+
+    setSummary({
+      numStudents: filtered.length,
+      avgAttendance: avgAttendance.toFixed(2),
+      avgPhysics: avgMarks.Physics.toFixed(2),
+      avgChemistry: avgMarks.Chemistry.toFixed(2),
+      avgMaths: avgMarks.Maths.toFixed(2),
+      avgMarks, // For chart
+    });
+  }, [selectedSection, students]);
 
   return (
-    <div className='list add flex-col'>
-      <p>All Foods List</p>
-      <div className="list-table">
-        <div className="list-table-format title">
-            <b className='list-title-img'>Image</b>
-            <b>Name</b>
-            <b>Category</b>
-            <b>Price</b>
-            <b>Action</b>
-        </div>
-        {list.map((item,index)=>{
-          return(
-            <div key={index} className='list-table-format'>
-              <img className='list-img' src={`${url}/images/`+ item.image} alt="" />
-              <p className='list-name'>{item.name} </p>
-              <p>{item.category} </p>
-              <p className='list-price'>₹{item.price} </p>
-              <img onClick={()=>removeFood(item._id)} className='cursor' src={assets.remove_icon_red} alt="" />
-
+    <div className="report-container">
+      <h2>Class Summary Report</h2>
+      <label htmlFor="section-select" className="section-label">
+        Select Class Section:
+      </label>
+      <select
+        id="section-select"
+        value={selectedSection}
+        onChange={(e) => setSelectedSection(e.target.value)}
+        className="section-select"
+      >
+        {sections.map((sec) => (
+          <option key={sec} value={sec}>
+            {sec}
+          </option>
+        ))}
+      </select>
+      {summary && (
+        <div className="summary-box">
+          <h3>Summary for Section {selectedSection}</h3>
+          <ul>
+            <li>Total Students: {summary.numStudents}</li>
+            <li>Average Attendance: {summary.avgAttendance}%</li>
+            <li>Average Physics Marks: {summary.avgPhysics}</li>
+            <li>Average Chemistry Marks: {summary.avgChemistry}</li>
+            <li>Average Maths Marks: {summary.avgMaths}</li>
+          </ul>
+          <div className="charts-row">
+            <div className="chart-box">
+              <Bar
+                data={{
+                  labels: subjects,
+                  datasets: [
+                    {
+                      label: 'Average Marks',
+                      data: subjects.map((subj) => summary.avgMarks[subj]),
+                      backgroundColor: ['#e94b3c', '#fd821d', '#2d91c2'],
+                    },
+                  ],
+                }}
+                options={{
+                  responsive: true,
+                  plugins: { legend: { display: false } },
+                }}
+              />
             </div>
-          )
-        })}
-      </div>
+            <div className="chart-box">
+              <Pie
+                data={{
+                  labels: ['Attendance', 'Absence'],
+                  datasets: [
+                    {
+                      data: [
+                        summary.avgAttendance,
+                        (100 - summary.avgAttendance).toFixed(2),
+                      ],
+                      backgroundColor: ['#e94b3c', '#cfd8dc'],
+                    },
+                  ],
+                }}
+                options={{
+                  responsive: true,
+                  plugins: { legend: { position: 'bottom' } },
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-  )
-}
+  );
+};
 
-export default Report
+export default Report;

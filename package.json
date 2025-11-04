@@ -1,0 +1,13 @@
+{
+  "name": "apas25",
+  "version": "1.0.0",
+  "description": "this is academic performance analytics system",
+  "main": "index.js",
+  "scripts": {
+    "dev": "",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

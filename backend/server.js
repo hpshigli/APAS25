@@ -1,44 +1,48 @@
-import express from "express"
-import cors from "cors"
-import { connectDB } from "./config/db.js"
-import foodRouter from "./routes/foodRoute.js"
-import userRouter from "./routes/userRoute.js"
-import 'dotenv/config'
-import cartRouter from "./routes/cartRoute.js"
-import orderRouter from "./routes/orderRoute.js"
-import adminRouter from "./routes/adminRoute.js"
+// backend/server.js
+import express from "express";
+import cors from "cors";
+import path from "path";
+import { fileURLToPath } from "url";
+import "dotenv/config";
 
+import { connectDB, sequelize } from "./config/db.js";
+import adminRouter from "./routes/adminRoute.js";
+import uploadRouter from "./routes/uploadRoute.js";
 
-// app connfig
-const app = express()
-const port = 4000
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// middleware
-app.use(express.json())
-app.use(cors())
+const app = express();
+const port = process.env.PORT || 4000;
 
-app.get("/", (req,res)=>{
-    res.send("API Working")
-})
+// Parse JSON BEFORE routes
+app.use(express.json());
 
+// If you use Vite proxy (recommended), simple CORS is enough in dev:
+app.use(cors());
 
-// db connection
-connectDB();
+// Static files
+const adminAssetsPath = path.resolve(__dirname, "../admin/src/assets");
+const uploadsPath = path.resolve(__dirname, "uploads");
+app.use("/assets", express.static(adminAssetsPath));
+app.use("/images", express.static(uploadsPath));
 
-// api endpoints
+// Health
+app.get("/", (_req, res) => res.send("API Working"));
 
-app.use("/api/food", foodRouter)
-app.use("/images", express.static('uploads'))
-app.use("/api/user",userRouter)
-app.use("/api/admin",adminRouter)
-app.use("/api/cart",cartRouter)
-app.use("/api/order",orderRouter)
+// API routes
+app.use("/api/admin", adminRouter);   // <-- login/register live here
+app.use("/api", uploadRouter);        // /api/admin/upload-csv etc.
 
-app.listen(port,()=>{
-    console.log(`Server is running on http://localhost:${port}`);
-})
+// 404 fallback
+app.use((req, res) => res.status(404).json({ error: "Not found" }));
 
-// mongodb+srv://hpshigli:avkdobara@cluster0.z40cksl.mongodb.net/?
+const start = async () => {
+  await connectDB();
+  await sequelize.sync({ alter: false });
+  app.listen(port, () =>
+    console.log(`Server is running on http://localhost:${port}`)
+  );
+};
 
-
-
+start();

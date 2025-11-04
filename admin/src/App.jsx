@@ -14,7 +14,7 @@ import Report from './pages/Report/Report';
 import Upload from './pages/Upload/Upload';
 const App = () => {
 
-  const url = "http://localhost:4000";
+  const url = "http://localhost:5173";
   const [showAdmin,setAdminLogin] = useState(false)
   return (
     <div>
