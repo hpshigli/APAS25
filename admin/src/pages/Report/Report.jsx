@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import './Report.css';
 import { Bar } from 'react-chartjs-2';
 import {
@@ -23,21 +23,24 @@ const Report = () => {
   const [selectedSection, setSelectedSection] = useState('');
   const [students, setStudents] = useState([]);
   const [summary, setSummary] = useState(null);
+
   const [showAll, setShowAll] = useState(false);
+  const [dbStats, setDbStats] = useState({ total: 0, perSection: [] });
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
 
-  // Fetch sections on mount
+  // ---- Fetch unique sections
   useEffect(() => {
     const loadSections = async () => {
       try {
         setErr('');
         const res = await axios.get('/api/students/sections', {
-          headers: { Authorization: `Bearer ${adToken}` },
+          headers: { Authorization: `Bearer ${adToken}` }
         });
         if (res.data.success) {
-          setSections(res.data.sections || []);
-          setSelectedSection((res.data.sections || [])[0] || '');
+          const secs = res.data.sections || [];
+          setSections(secs);
+          setSelectedSection(secs[0] || '');
         } else {
           setErr(res.data.message || 'Failed to load sections');
         }
@@ -48,7 +51,22 @@ const Report = () => {
     if (adToken) loadSections();
   }, [adToken]);
 
-  // Fetch data when selected section or showAll changes
+  // ---- Fetch overall DB stats
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const res = await axios.get('/api/students/stats', {
+          headers: { Authorization: `Bearer ${adToken}` }
+        });
+        if (res.data?.success) setDbStats(res.data);
+      } catch {
+        // ignore
+      }
+    };
+    if (adToken) loadStats();
+  }, [adToken]);
+
+  // ---- Fetch current view data (all vs section)
   useEffect(() => {
     const loadData = async () => {
       if (!adToken) return;
@@ -61,12 +79,19 @@ const Report = () => {
           ? '/api/students/all'
           : `/api/students/section/${encodeURIComponent(selectedSection)}`;
 
+        console.log('Fetching:', endpoint);
         const res = await axios.get(endpoint, {
-          headers: { Authorization: `Bearer ${adToken}` },
+          headers: { Authorization: `Bearer ${adToken}` }
         });
+
         if (res.data.success) {
           setStudents(res.data.students || []);
           setSummary(res.data.summary || null);
+
+          // authoratative DB total when on "all"
+          if (showAll && typeof res.data.totalDbCount === 'number') {
+            setDbStats((s) => ({ ...s, total: res.data.totalDbCount }));
+          }
         } else {
           setErr(res.data.message || 'Failed to load data');
           setStudents([]);
@@ -83,31 +108,24 @@ const Report = () => {
     loadData();
   }, [adToken, selectedSection, showAll]);
 
-  // Build per-student grouped bar data
-  const perStudentChartData = React.useMemo(() => {
+  // ---- Per-student grouped bars
+  const perStudentChartData = useMemo(() => {
     if (!students?.length) return null;
 
     const labels = students.map((s) => `${s.name} (${s.srn})`);
-
-    // Each subject is a dataset
-    const physics = students.map((s) => Number(s.physics) || 0);
-    const chemistry = students.map((s) => Number(s.chemistry) || 0);
-    const maths = students.map((s) => Number(s.maths) || 0);
-    const attendance = students.map((s) => Number(s.attendance) || 0);
-
     return {
       labels,
       datasets: [
-        { label: 'Physics', data: physics, backgroundColor: '#2d91c2' },
-        { label: 'Chemistry', data: chemistry, backgroundColor: '#fd821d' },
-        { label: 'Maths', data: maths, backgroundColor: '#7cb342' },
-        { label: 'Attendance %', data: attendance, backgroundColor: '#e94b3c' },
+        { label: 'Physics', data: students.map((s) => Number(s.physics) || 0), backgroundColor: '#2d91c2' },
+        { label: 'Chemistry', data: students.map((s) => Number(s.chemistry) || 0), backgroundColor: '#fd821d' },
+        { label: 'Maths', data: students.map((s) => Number(s.maths) || 0), backgroundColor: '#7cb342' },
+        { label: 'Attendance %', data: students.map((s) => Number(s.attendance) || 0), backgroundColor: '#e94b3c' },
       ],
     };
   }, [students]);
 
-  // Build averages bar
-  const averagesChartData = React.useMemo(() => {
+  // ---- Averages bar
+  const averagesChartData = useMemo(() => {
     if (!summary) return null;
     return {
       labels: ['Attendance', ...subjects],
@@ -134,6 +152,7 @@ const Report = () => {
         <label htmlFor="section-select" className="section-label">
           Select Class Section:
         </label>
+
         <select
           id="section-select"
           value={selectedSection}
@@ -142,16 +161,11 @@ const Report = () => {
           disabled={showAll}
         >
           {sections.map((sec) => (
-            <option key={sec} value={sec}>
-              {sec}
-            </option>
+            <option key={sec} value={sec}>{sec}</option>
           ))}
         </select>
 
-        <button
-          className="toggle-btn"
-          onClick={() => setShowAll((v) => !v)}
-        >
+        <button className="toggle-btn" onClick={() => setShowAll((v) => !v)}>
           {showAll ? 'Show Selected Section' : 'Show All Sections'}
         </button>
       </div>
@@ -162,11 +176,14 @@ const Report = () => {
       {!loading && summary && (
         <>
           <div className="summary-box">
-            <h3>
-              {showAll ? 'Summary for All Sections' : `Summary for Section ${selectedSection}`}
-            </h3>
+            <h3>{showAll ? 'Summary for All Sections' : `Summary for Section ${selectedSection}`}</h3>
             <ul>
-              <li>Total Students: {summary.numStudents}</li>
+              <li>
+                Total Students (current view): {summary.numStudents}
+                {!!dbStats?.total && (
+                  <> &nbsp; <span style={{ color: '#666' }}>| Total in DB: {dbStats.total}</span></>
+                )}
+              </li>
               <li>Average Attendance: {summary.avgAttendance}%</li>
               <li>Average Physics Marks: {summary.avgPhysics}</li>
               <li>Average Chemistry Marks: {summary.avgChemistry}</li>
