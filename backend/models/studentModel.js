@@ -14,6 +14,8 @@ const Student = sequelize.define(
     physics: { type: DataTypes.FLOAT, allowNull: false },
     chemistry: { type: DataTypes.FLOAT, allowNull: false },
     maths: { type: DataTypes.FLOAT, allowNull: false },
+    notified: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    lastNotifiedAt: { type: DataTypes.DATE, allowNull: true },
   },
   {
     tableName: "students",
